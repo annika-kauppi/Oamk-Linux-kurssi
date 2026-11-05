@@ -1,0 +1,1 @@
+# Oamk-Linux-kurssi
