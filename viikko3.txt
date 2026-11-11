@@ -268,7 +268,3 @@ cat > "$TEMP_FILE" <<EOF
 </body>
 </html>
 EOF
-
-# Set public read permissions so Nginx can serve the file, then move into place
-chmod 644 "$TEMP_FILE"
-mv "$TEMP_FILE" "$TARGET_FILE"
