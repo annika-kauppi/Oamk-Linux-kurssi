@@ -8,7 +8,7 @@ def home():
     conn = mysql.connector.connect(
         host="localhost",
         user="app_readonly",
-        password="Annikaonparas99_",
+        password="salasana",
         database="exampledb"
     )
     cursor = conn.cursor()
