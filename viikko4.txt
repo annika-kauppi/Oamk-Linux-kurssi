@@ -1,0 +1,85 @@
+from flask import Flask
+import mysql.connector
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="app_readonly",
+        password="Annikaonparas99_",
+        database="exampledb"
+    )
+    cursor = conn.cursor()
+    # Read-only replica: ei CREATE-, INSERT-, UPDATE- tai COMMIT-komentoja
+    cursor.execute("SELECT hits FROM counter WHERE id = 1")
+    row = cursor.fetchone()
+    hits = row if row else 0
+
+    cursor.close()
+    conn.close()
+
+    return f"""
+    <!DOCTYPE html>
+    <html lang="fi">
+    <head>
+        <meta charset="UTF-8">
+        <title>Viikko 4 - Palvelin B (Read-Only Replica)</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; max-width: 900px; margin: 40px auto; line-height: 1.6; padding: 0 20px; }}
+            .notice {{ background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
+            pre {{ background: #f4f4f4; padding: 10px; overflow-x: auto; border-radius: 4px; }}
+            h2 {{ border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 30px; }}
+        </style>
+    </head>
+    <body>
+        <h1>Palvelin B (Read-Only Replica) – Viikko 4</h1>
+
+        <h2>Kävijälaskurin arvo vk2 sivulla: {hits}</h2>
+
+        <h2>Linkit</h2>
+        <ul>
+            <li><strong>Palvelin A vk2 (kasvattaa laskuria):</strong> <a href="http://195.148.20.68/viikko2/">http://195.148.20.68/viikko2/</a></li>
+            <li><strong>Palvelin B:</strong> <a href="http://195.148.30.53/viikko4/">http://195.148.30.53/viikko4/</a></li>
+            <li><strong>GitHub-repositorio:</strong> <a href="https://github.com">https://github.com/annika-kauppi/Oamk-Linux-kurssi</a></li>
+        </ul>
+  <h2>1. Palvelimen B luonti</h2>
+        <p>Palvelin B (195.148.30.53) luotiin CSC CPouta -ympäristössä, tekemällä snapshot palvelimesta A (195.148.20.68) ja käynnistämällä siitä uusi virtuaalikone omalla julkisella IP-osoitteella.</p>
+
+        <h2>2. Tallennustila ja varmuuskopioiden sijainnit</h2>
+        <p>Varmuuskopiot tallennetaan palvelimella B julkisen verkkohakemiston ulkopuolelle kansioon <code>/var/backups/html/</code>. Palvelimen A loki sijaitsee polussa <code>/var/log/html_backup.log</code>.>
+
+
+        <h2>3. Linux-käyttäjät, tietokantakäyttäjät ja käyttöoikeudet</h2>
+        <ul>
+            <li><strong>Linux-käyttäjät ja oikeudet:</strong> Varmuuskopioskripti ajetaan ubuntu-käyttäjänä SSH-avaimella. Palvelimen B kohdekansion <code>/var/backups/html</code> omistaa ubuntu:ubuntu jolloi>
+            <li><strong>Tietokantakäyttäjät:</strong> Replikointiin luotiin oma rajattu käyttäjä <code>repl_user@195.148.30.53</code> oikeudella <code>REPLICATION SLAVE</code>. Palvelimen B Flask-sovellus käy>
+        </ul>
+
+        <h2>4. Tuntikohtaiset varmuuskopiot ja jatkuva replikointi</h2>
+        <ul>
+            <li><strong>Varmuuskopiot:</strong> Palvelimen A cron ajaa skriptin <code>/usr/local/bin/backup_html.sh</code> tasatunnein (<code>0 * * * *</code>). Skripti pakkaa <code>/var/www/html</code>-kansi>
+            <li><strong>Jatkuva replikointi:</strong> Palvelin A (<code>server-id = 1</code>) kirjaa muutokset binäärilokiin, ja palvelin B (<code>server-id = 2</code>) hakee ne reaaliaikaisesti.</li>
+            <li><strong>Miksi replikointi ei korvaa historiallisia varmuuskopioita?</strong> Replikointi kopioi kaikki muutokset välittömästi – myös virheet. Jos palvelimella A ajetaan vahingossa <code>DROP T>
+        </ul>
+
+        <h2>5. Testitulokset</h2>
+        <ul>
+            <li>Molemmat sivut ovat julkisesti saavutettavissa selaimella: <strong>OK</strong></li>
+            <li>Palvelimen A <code>/viikko2/</code>-sivun lataus kasvattaa laskuria ja päivittyy B:n <code>/viikko4/</code>-sivulle: <strong>OK</strong></li>
+            <li>Palvelimen B <code>/viikko4/</code>-sivun lataus ei kasvata laskuria: <strong>OK</strong></li>
+            <li><code>SHOW REPLICA STATUS\\G</code> raportoi <code>Replica_IO_Running: Yes</code> ja <code>Replica_SQL_Running: Yes</code>: <strong>OK</strong></li>
+            <li>Vähintään kaksi ajastettua cron-varmuuskopiota onnistui: </strong>OK</strong></li>
+            <li>Palautettu testitiedosto vastasi alkuperäistä (<code>diff</code>): <strong>OK</strong> </li>
+            <li>Palvelimen B uudelleenkäynnistyksen (<code>sudo reboot</code>) jälkeen verkkosivu, replikointi ja varmuuskopiointi jatkoivat toimintaansa: <strong>OK</strong></li>
+        </ul>
+
+        <h2>6. Ratkaistu ongelma / opittu asia</h2>
+        <li>Kun palvelin B luotiin snapshotista, sillä oli aluksi täsmälleen sama MySQL <code>server-id</code> ja <code>server_uuid</code> kuin palvelimella A. Tämän vuoksi replikointi pysähtyi virheeseen. On>
+    </body>
+    </html>
+    """
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
